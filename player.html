@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>EP Web Player</title>
+  <script type="text/javascript">
+    var _write_i = 0;
+    var vidparam = { };
+    var player;
+    var MIN_SEEK_INTERVAL = 1;
+    var MAX_SEEK_INTERVAL = 10;
+    function destboxKeyPress() {
+      console.log("pressed "+event.key); 
+      if(event.key == "Enter") {
+        event.preventDefault();
+        var destbox = document.getElementById("destination");
+        destbox.value = destbox.value.replace(/\s+/gm,'');
+        setLink();
+      }
+    }
+    function pasteLink() {
+      navigator.clipboard.readText().then((clipboard) => {
+        console.log("clipboard: " + clipboard);
+        if ( clipboard.length == 0 ) {
+          return;
+        };
+        var destbox = document.getElementById("destination");
+        destbox.value = clipboard;
+        destbox.value = destbox.value.replace(/\s+/gm,'');
+        destbox.focus();
+      });
+    }
+    function setLink() {
+      var inputlink = document.getElementById("destination").value.replace(/\s+/gm,'');
+      var newlink = document.getElementById("destination").value.replace(/\s+/gm,'');
+      var linkElem = document.getElementById("link");
+      var vid_id = "";
+      var frameheight = 1080;
+
+      if ( newlink.match( /\byoutu\.?be/) ) {
+        var matchresult; 
+
+        // matchresult = (
+        //     newlink.match( /(?<=\bv=)[^&]+/) ? 
+        //       newlink.match( /(?<=\bv=)[^&]+/)
+        //   : newlink.match( /(?<=youtu\.be\/)[^?&\/]+/) ? 
+        //       newlink.match( /(?<=youtu\.be\/)[^?&\/]+/)
+        //   : newlink.match( /(?<=youtube.com\/shorts\/)[^?&\/]+/) ? 
+        //       newlink.match( /(?<=youtube.com\/shorts\/)[^?&\/]+/)
+        //   : null 
+        // );
+
+
+        // if ( matchresult != null ) {
+        if ( 
+             (matchresult = newlink.match( /(?<=\bv=)[^&]+/))
+          || (matchresult = newlink.match( /(?<=youtu\.be\/)[^?&\/]+/))
+          || (matchresult = newlink.match( /(?<=youtube.com\/shorts\/)[^?&\/]+/))
+        ) {
+          vid_id = matchresult[0];
+          var q_param = newlink.match( /\?.*$/);
+          q_param = q_param != null ? q_param : [ "" ];
+          newlink = "https://www.youtube-nocookie.com/embed/" + matchresult[0] + q_param[0];
+          console.log( "newlink: " + newlink + '\n');
+          var st = q_param[0].match( /(?<=\bt=)\d+/ );
+          vidparam['id'] = vid_id;
+          if ( st != null && st.length > 0 ) {
+            vidparam['start'] = st[0];
+          }
+        }
+
+        if (visualViewport.height > 1080) {
+          frameheight = 1080;
+        }
+        else if (visualViewport.height > 720) {
+          frameheight = 720;
+        }
+        else if (visualViewport.height > 480) {
+          frameheight = 480;
+        }
+        else if (visualViewport.height > 240) {
+          frameheight = 240;
+        }
+        else if (visualViewport.height > 144) {
+          frameheight = 144;
+        }
+
+        // var linkHtml = "<iframe onload='loadIframeApi()' title='YouTube video player' "
+        // + "frameborder='0' "
+        // + "allow='accelerometer; "
+        //   + "autoplay; "
+        //   + "clipboard-write; "
+        //   + "encrypted-media; "
+        //   + "gyroscope; "
+        //   + "picture-in-picture' "
+        //   + "enablejsapi=1 "
+        // + "allowfullscreen "
+        // + "width='100%' "
+        // + "height='" + frameheight + "' "
+        // + "src='" + newlink + "'/></iframe>";
+
+        var linkHtml = "<div id='youtube-player' height='"+frameheight+"'></div>";
+        
+      document.getElementById("spacer").style.display = "none";
+
+      }
+      else {
+
+        var linkHtml = "<video id='video' controls><source src=" + '"'
+          + newlink + '"' + "/></video>";
+      }
+
+      var linkLabelHtml = "<p id=" + '"' + "linklabel" + '"' + ">"
+        + inputlink;
+      if (vid_id.length > 0) {
+        linkLabelHtml+="<input type='text' id='vid_id' value='" + vid_id + "'/>";
+        linkLabelHtml+="<input type='button' id='controls' value='Control' "
+          + "class='hidectl' onkeydown='videoControl(event)'/>";
+        linkLabelHtml+="</p>"
+      }
+      else {
+        linkLabelHtml+="<input type='button' id='controls' value='Control' "
+          + "class='hidectl' onkeydown='videoControl(event)'/>";
+      }
+
+      linkElem.innerHTML = linkHtml + '\n' + linkLabelHtml ;
+      // linkElem.firstChild.style.height = linkElem.firstElementChild.getBoundingClientRect().height;
+      linkElem.style.width = "100%";
+      linkElem.style.textAlign = "center";
+
+      if (vid_id.length > 0) {
+        loadIframeApi();
+      }
+      else {
+        player = new EpPlayer(document.getElementById("video"));
+        document.getElementById('controls').focus();
+      }
+      
+      // linkElem.insertAdjacentHTML("afterEnd", linkLabelHtml );
+      
+      // document.getElementById("destination").value + "</p>";
+    }
+    const epPlayerProto = { 
+      getPlayerState() {
+        var state = -2;
+        if (this.video.readState != HTMLMediaElement.HAVE_NOTHING) {
+          state = ( this.video.paused ? 2 : 1 );
+        }
+        return state;
+      }
+      , seekTo(time, ignored) {
+        this.video.currentTime = time;
+      }
+      , playVideo() {
+        this.video.play();
+      }
+      , pauseVideo() {
+        this.video.pause();
+      }
+      , getCurrentTime() {
+        return this.video.currentTime;
+      }
+      , getDuration() {
+        return this.video.duration;
+      }
+    };
+
+    function EpPlayer(videoIn) {
+      this.video = videoIn;
+    }
+
+    Object.assign(EpPlayer.prototype, epPlayerProto);
+    
+    function clearTextAreaFirst(callerElem) {
+      
+      if ( callerElem.textContent == "url here" ) {
+        callerElem.textContent = "";
+        callerElem.style.color = "rgba(255,255,255,1)";
+      }
+    }
+    function loadIframeApi() {
+      var tag = document.createElement('script');
+      tag.id = 'youtube';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+    function onYouTubeIframeAPIReady() {
+      window.origin = "https://www.youtube.com";
+      player = new YT.Player('youtube-player', {
+          origin: "https://www.youtube.com"
+        , videoId: vidparam['id']
+        , width: (visualViewport.width - 30)
+        , height: document.getElementById('youtube-player').height
+        , playerVars: {
+            'playsinline': 1
+          , 'start': vidparam['start']
+        }
+        , events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+    function onPlayerReady(event) {
+      player.getIframe().attributes.sandbox.value += " " + [
+          "allow-forms"
+        , "allow-scripts"
+        , "allow-pointer-lock"
+        , "allow-same-origin"
+        , "allow-top-navigation"
+        , "allow-presentation"
+        ].join(" ") ;
+      console.log("player is ready");
+      document.getElementById('controls').focus();
+    }
+    function onPlayerStateChange(event) {
+      console.log("player state changed: " +player.getPlayerState() );
+      document.getElementById('controls').focus();
+    }
+    function videoControl(event) {
+      console.log("pressed >"+event.key+"<"); 
+      if(event.key == "k" || event.key == " ") {
+        if ( player.getPlayerState() == -1 ) {
+          // unstarted
+          player.playVideo();
+        }
+        else if ( player.getPlayerState() == 0 ) {
+          // ended
+          player.seekTo(0,true);
+          player.playVideo();
+        }
+        else if ( player.getPlayerState() == 1 ) {
+          // playing
+          player.pauseVideo();
+        }
+        else if ( player.getPlayerState() == 2 ) {
+          // paused
+          player.playVideo();
+        }
+        else if ( player.getPlayerState() == 5 ) {
+          // cued - the starting condition
+          player.playVideo();
+        }
+      }
+      else if(event.key == "0") {
+        player.seekTo(0,true);
+      }
+      else if(event.key == "ArrowLeft") {
+        var curtime = player.getCurrentTime();
+        var dur = player.getDuration();
+        var SEEK_INTERVAL = 2;
+        if ( dur * 0.1 > MAX_SEEK_INTERVAL ) {
+          SEEK_INTERVAL = MAX_SEEK_INTERVAL;
+        }
+        else if ( dur * 0.1 < MIN_SEEK_INTERVAL ) {
+          SEEK_INTERVAL = MIN_SEEK_INTERVAL;
+        }
+        else {
+          SEEK_INTERVAL = dur * 0.1;
+        }
+
+        if ( curtime - SEEK_INTERVAL > 0 ) {
+          player.seekTo(curtime - SEEK_INTERVAL, true)
+        }
+        else {
+          player.seekTo(0, true)
+        }
+        console.log("seeking back "+SEEK_INTERVAL+" secs"); 
+      }
+      else if(event.key == "ArrowRight") {
+        var curtime = player.getCurrentTime();
+        var dur = player.getDuration();
+        var SEEK_INTERVAL = 2;
+        if ( dur * 0.1 > MAX_SEEK_INTERVAL ) {
+          SEEK_INTERVAL = MAX_SEEK_INTERVAL;
+        }
+        else if ( dur * 0.1 < MIN_SEEK_INTERVAL ) {
+          SEEK_INTERVAL = MIN_SEEK_INTERVAL;
+        }
+        else {
+          SEEK_INTERVAL = dur * 0.1;
+        }
+
+        if ( curtime + SEEK_INTERVAL < dur ) {
+          player.seekTo(curtime + SEEK_INTERVAL, true)
+        }
+        else {
+          player.seekTo(dur, true)
+        }
+        console.log("seeking fwd  "+SEEK_INTERVAL+" secs"); 
+      }
+    }
+    function focusController(event) {
+      if ( document.getElementById('controls') == null ) {
+        return;
+      }
+      if ( !event.target.tagName.match( /TEXTAREA|INPUT/ )) {
+        console.log( "clicked " + event.target.tagName );
+        document.getElementById('controls').focus();
+      }
+    }
+    
+    document.onclick = focusController;
+
+  </script>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: "SF Pro Display Heavy", sans-serif;
+      font-size: 11pt;
+      font-weight: 500;
+    }
+
+    textarea {
+      background-color: #333;
+      color: rgba(255,255,255,0.5);
+      box-sizing: border-box;
+      padding-left: 0.5em;
+      padding-top: 0.5em;
+      border-radius: 1px;
+    }
+
+    input {
+      background-color: #333;
+      color: white;
+      padding: 1em, 1em, 1em, 1em;
+      margin-block-start: 1em;
+      margin-block-end: 1em;
+      margin-inline-start: 2em;
+      border-radius: 1px;
+    }
+
+    .hidectl {
+      border: 0;
+      clip: rect(0 0 0 0);
+      background-color: rgba(0,0,0,0);
+      color: rgba(0,0,0,0);
+      border: none;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      padding: 0;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    a:link {
+      color: #8ec6de;
+    }
+
+    a:visited {
+      color: #b8b7de;
+    }
+
+
+    div {
+      padding: 1em, 1em, 1em, 1em;
+      margin-block-start: 1em;
+      margin-block-end: 1em;
+      width:50%;
+      align-items: center;
+      justify-content: center;
+    }
+
+    div#link {
+      padding: 1em, 1em, 1em, 1em;
+      margin-block-start: 1em;
+      margin-block-end: 1em;
+      width:50%;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: right;
+    }
+
+    div.spacer {
+      display: block;
+      height: 2ex;
+      margin-block-start: 10ex;
+    }
+
+    p.leftalign {
+      width: 100%;
+      display: block;
+      margin-block-start: 0.3em;
+      margin-block-end: 0.6em;
+    }
+
+    p.label {
+      display: flex;
+      justify-content: right;
+      width:50%;
+      height: auto;
+      align-items: right;
+      margin-left: auto;
+      margin-right: auto;
+      margin-block-start: 0.3em;
+      margin-block-end: 0.6em;
+    }
+
+    p#linklabel {
+      display: block;
+      text-align: center;
+      justify-content: center;
+      width:100%
+      align-items: center;
+      margin-block-start: 0.3em;
+      margin-block-end: 3ex;
+      padding-left: 5em;
+      padding-right: 5em;
+      padding-top: 3ex;
+      padding-bottom: 3ex;
+      height: 3ex;
+      vertical-align: top;
+    }
+
+    video {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    p {
+      display: flex;
+      justify-content: right;
+      align-items: right;
+      margin-block-start: 0.3em;
+      margin-block-end: 1em;
+      padding: 1em, 1em, 1em, 1em;
+      word-break: break-all;
+    }
+
+    :focus {
+      box-shadow: 0 0 0 1px #fff;
+      border-color: #195fcc;
+    }
+
+    * {
+      -moz-box-sizing: border-box; 
+      -webkit-box-sizing: border-box; 
+       box-sizing: border-box; 
+    }
+  </style>
+</head>
+
+<body>
+  <div class="spacer" id="spacer" width="100%"> </div>
+  <div id="link">
+    <p class="leftalign" id="linklabel">[ player ]</p></div>
+  <p class="label">
+    <textarea id="destination" rows="5" cols="60" 
+      onclick="clearTextAreaFirst(this)" 
+      onfocus="clearTextAreaFirst(this)"
+      onkeydown="destboxKeyPress(event)"
+    >url here</textarea>
+    <br />
+  </p>
+  <p class="label">
+    <input type="button" onclick="pasteLink()" value="paste">
+    <input id="loadbtn" type="button" onclick="setLink()" value="load">
+  </p>
+  <p class="label">
+    <input type="button" onclick="window.location.reload()" value="refresh">
+  </p>
+</body>
+
+<!-- vim: ft=html expandtab -->
+</html>
