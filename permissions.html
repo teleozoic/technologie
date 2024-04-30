@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>TotilPay Go &bull; Permissions Required</title>
+		<style>
+			* {
+				font-size: 11pt;
+				font-family: sans-serif;
+			}
+
+			#header {
+			  padding: 0 0.5em;
+				font-size: 13pt;
+			}
+			.collapsible {
+			  padding: 0 0.25em;
+			  border: none;
+			  text-align: left;
+			  outline: none;
+				background-color: transparent;
+			}
+			
+			.container {
+				margin-bottom: 0.25em
+			}
+
+			.active, .collapsible:hover {
+			  font-style: bold;
+			}
+			
+			.content {
+			  padding: 0 0.25em;
+				max-height: 0;
+			  overflow: hidden;
+				width:90%;
+				transition: max-height 0.2s ease-out;
+			}
+		</style>
+		<script>
+			var perm = {
+			  "Access Network State": "Allows the app to view information about network connections such as which networks exist and are connected."
+			, "Internet": "Allows the application to connect to the network."
+			, "Audio Recording": "Allows the application to receive data from card readers that connect via audio."
+			, "Modify Audio Settings": "Allows the application to adjust volume settings for proper communication with peripherals that connect via audio."
+			, "Bluetooth": "Allow the application to perform Bluetooth peripheral-related functions. (Until Android API 30)"
+			, "Bluetooth Admin": "Allows the application to discover and pair bluetooth devices. (Until Android API 30)"
+			, "Bluetooth Connect": "Connect to nearby devices that are already paired.  Allows the application to communicate with bluetooth devices. (Android API 31 and up)"
+			, "Bluetooth Scan": "Allows the application to discover nearby devices. (Android API 31 and up)"
+			, "Device Location": "To be able to use the device 'BT Chipper' and to be able to perform any card-based transaction. Required for regulatory compliance with payment processors for identifying mobile merchants."
+			, "Read Phone State": "Allows read only access to your phone state in order for the application to identify your device. (This permission is critical for the application to run properly)"
+			, "Schedule Exact Alarm": "Allows the application to manage time-out conditions. (Android API 31 and up)"
+			, "Write External Storage": "Allows the application to save configuration settings and to record transaction summary data, including receipts and data used for reporting. (Until Android API 28)"
+			, "Wake Lock": "Allows the device to stay on while the application is performing certain tasks."
+			};
+
+			var permsNeededText = "&bull; Record Audio<br/>&bull; Bluetooth Connect<br/>&bull; Bluetooth Scan<br/>&bull; Access Coarse Location<br/>&bull; Access Fine Location<br/>&bull; Read Phone State<br/>&bull; Schedule Exact Alarm<br/>&bull; Write External Storage<br/>&bull; Read External Storage<br/>";
+
+			function collapsetext(btnSelf) {
+			  btnSelf.classList.toggle("active");
+			  var arrow = btnSelf.firstChild;
+			  var content = (btnSelf.parentElement).getElementsByClassName("content")[0];
+			  if (content.style.maxHeight){
+			    content.style.maxHeight = null;
+					arrow.innerHTML = "&#9658;";
+			  } else {
+			    content.style.maxHeight = content.scrollHeight + "px";
+					console.log("scrollheight");
+					arrow.innerHTML = "&#9660;";
+			  }
+			}
+			function addPermissionElements(parentElement) {
+				var permElem = "";
+				for ( var permName in perm ) {
+					permElem += "<div class=\"container\">";
+					permElem += "<button class=\"collapsible\" onclick=\"collapsetext(this)\"><span>&#9658;</span>&nbsp;&nbsp;"+permName+"</button>";
+					permElem += "<div class=\"content\">" + perm[permName] + "</div></div>";
+				}
+				var elem = document.createElement("e");
+				elem.innerHTML = permElem;
+				parentElement.appendChild( elem );
+
+				if ( permsNeededText != ("__" + "NEEDED_PERM_LIST" + "__") ) {
+					document.getElementById("header").innerHTML += "<p>" + permsNeededText + "</p>";
+				}
+			}
+		</script>
+	</head>
+	<body onLoad="addPermissionElements(document.body)">
+		<div id="header">Please grant the following permissions:</div>
+		<p><p>More Information</p>The application requires the following permissions for regulatory compliance and the use of peripherals. The purpose of each permission is described below.</p>
+	</body>
+</html>
+
